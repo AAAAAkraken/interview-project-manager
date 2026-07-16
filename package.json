@@ -1,0 +1,81 @@
+{
+  "name": "interview-project-manager",
+  "version": "1.0.0",
+  "description": "牛马速通器 - Electron桌面应用",
+  "author": "AAAAAkraken",
+  "private": true,
+  "main": "electron/main.js",
+  "scripts": {
+    "dev": "next dev",
+    "electron:dev": "node electron/start.js",
+    "build": "next build",
+    "start": "next start",
+    "electron:start": "next build && node electron/start.js",
+    "lint": "next lint",
+    "pack": "npm run build && npm run rebuild:electron && electron-builder --dir",
+    "dist": "npm run build && npm run rebuild:electron && electron-builder",
+    "rebuild:electron": "node-gyp rebuild --target=43.1.1 --dist-url=https://electronjs.org/headers --arch=x64 --directory=node_modules/better-sqlite3",
+    "rebuild:system": "npm rebuild better-sqlite3"
+  },
+  "build": {
+    "appId": "com.interview.manager",
+    "productName": "牛马速通器",
+    "directories": {
+      "output": "release"
+    },
+    "files": [
+      "electron/**/*",
+      "assets/**/*",
+      "package.json"
+    ],
+    "extraResources": [
+      {
+        "from": ".next",
+        "to": ".next"
+      },
+      {
+        "from": "node_modules",
+        "to": "node_modules",
+        "filter": ["**/*"]
+      },
+      {
+        "from": "next.config.js",
+        "to": "next.config.js"
+      }
+    ],
+    "electronDist": "node_modules/electron/dist",
+    "win": {
+      "target": "nsis",
+      "icon": "assets/icon.ico"
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "shortcutName": "牛马速通器"
+    },
+    "npmRebuild": true
+  },
+  "dependencies": {
+    "better-sqlite3": "^12.11.1",
+    "next": "15.2.3",
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0"
+  },
+  "devDependencies": {
+    "@types/better-sqlite3": "^7.6.12",
+    "@types/node": "^22.0.0",
+    "@types/react": "^19.0.0",
+    "@types/react-dom": "^19.0.0",
+    "autoprefixer": "^10.4.0",
+    "concurrently": "^10.0.3",
+    "electron": "^43.1.1",
+    "electron-builder": "^26.15.3",
+    "eslint": "^9.0.0",
+    "eslint-config-next": "15.2.3",
+    "postcss": "^8.4.0",
+    "tailwindcss": "^3.4.0",
+    "typescript": "^5.7.0",
+    "wait-on": "^9.0.10"
+  }
+}
