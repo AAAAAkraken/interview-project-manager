@@ -18,6 +18,25 @@ const RETRY_DELAY = 2000;
 
 function startServer() {
   return new Promise((resolve, reject) => {
+    // If server is already running externally (dev mode via start.js), just poll
+    if (process.env.NEXT_EXTERNAL) {
+      console.log('[App] Using external Next.js server, waiting for it...');
+      let stderrOutput = '';
+      const t0 = Date.now();
+      const poll = () => {
+        if (Date.now() - t0 > 30000) {
+          reject(new Error('外部Server启动超时(30s)'));
+          return;
+        }
+        http.get(NEXT_URL, (res) => {
+          if (res.statusCode === 200 || res.statusCode === 304) resolve();
+          else setTimeout(poll, 500);
+        }).on('error', () => setTimeout(poll, 500));
+      };
+      setTimeout(poll, 1000);
+      return;
+    }
+
     let stderrOutput = '';
     const isPackaged = app.isPackaged;
 

@@ -28,13 +28,25 @@
 
 ## 🚀 快速开始
 
-### 开发模式
+### 安装依赖
+
+> **注意**：项目默认配置了国内 npm 镜像（npmmirror），解决 Electron / better-sqlite3 二进制包在国内下载慢或失败的问题。
 
 ```bash
-# 安装依赖
+# 安装依赖（国内用户直接用这行）
 npm install
+```
 
-# 启动桌面应用（开发模式）
+如果你不在中国，可以删掉 `.npmrc` 或改为官方源：
+
+```bash
+rm .npmrc   # 删掉镜像配置，恢复官方源
+npm install
+```
+
+### 启动（开发模式）
+
+```bash
 npm run electron:dev
 ```
 
