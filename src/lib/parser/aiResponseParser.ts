@@ -42,15 +42,11 @@ function validateParsedResponse(data: unknown): ParsedAIResponse {
     throw new ParseError('缺少 techStack 字段', '请确保AI返回的JSON包含 techStack 对象');
   }
   const techStack = d.techStack as Record<string, unknown>;
-  if (!Array.isArray(techStack.frameworks)) {
-    throw new ParseError('techStack.frameworks 字段缺失或格式错误', 'frameworks 应该是一个字符串数组');
-  }
+  validateStringArray(techStack.frameworks, 'techStack.frameworks');
   if (typeof techStack.database !== 'string') {
     throw new ParseError('techStack.database 字段缺失或格式错误');
   }
-  if (!Array.isArray(techStack.keyLibraries)) {
-    throw new ParseError('techStack.keyLibraries 字段缺失或格式错误', 'keyLibraries 应该是一个字符串数组');
-  }
+  validateStringArray(techStack.keyLibraries, 'techStack.keyLibraries');
 
   // Validate keyFiles
   if (!Array.isArray(d.keyFiles)) {
@@ -70,9 +66,7 @@ function validateParsedResponse(data: unknown): ParsedAIResponse {
     if (typeof kf.description !== 'string') {
       throw new ParseError(`keyFiles[${i}].description 字段缺失或格式错误`);
     }
-    if (!Array.isArray(kf.keyTechnologies)) {
-      throw new ParseError(`keyFiles[${i}].keyTechnologies 字段缺失或格式错误`, 'keyTechnologies 应该是一个字符串数组');
-    }
+    validateStringArray(kf.keyTechnologies, `keyFiles[${i}].keyTechnologies`);
   }
 
   // Validate interviewQuestions
@@ -110,6 +104,20 @@ function validateParsedResponse(data: unknown): ParsedAIResponse {
   }
 
   return data as ParsedAIResponse;
+}
+
+function validateStringArray(value: unknown, fieldPath: string): string[] {
+  if (!Array.isArray(value)) {
+    throw new ParseError(`${fieldPath} 字段缺失或格式错误`, `${fieldPath} 应该是一个字符串数组`);
+  }
+
+  value.forEach((item, index) => {
+    if (typeof item !== 'string') {
+      throw new ParseError(`${fieldPath}[${index}] 字段格式错误`, `${fieldPath} 的每一项都应该是字符串`);
+    }
+  });
+
+  return value;
 }
 
 export function parseAiResponse(rawText: string): ParsedAIResponse {

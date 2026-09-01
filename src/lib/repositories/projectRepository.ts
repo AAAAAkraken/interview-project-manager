@@ -1,4 +1,5 @@
 import db from '@/lib/db';
+import { normalizeRepoPath } from '@/lib/projects/repoPath';
 import type { Project, CreateProjectInput } from '@/types/project';
 
 interface ProjectRow {
@@ -10,14 +11,35 @@ interface ProjectRow {
   updated_at: string;
 }
 
+interface ProjectWithAnalysisRow extends ProjectRow {
+  analysis_count: number;
+  latest_analysis_at: string | null;
+  latest_analysis_language: string | null;
+  latest_analysis_frameworks: string | null;
+  latest_analysis_database: string | null;
+}
+
 function rowToProject(row: ProjectRow): Project {
   return {
     id: row.id,
     name: row.name,
     description: row.description,
-    repoPath: row.repo_path,
+    repoPath: normalizeRepoPath(row.repo_path),
     createdAt: row.created_at,
     updatedAt: row.updated_at,
+  };
+}
+
+function rowToProjectWithAnalysis(row: ProjectWithAnalysisRow): Project {
+  return {
+    ...rowToProject(row),
+    analysisCount: row.analysis_count,
+    latestAnalysisAt: row.latest_analysis_at,
+    latestAnalysisLanguage: row.latest_analysis_language,
+    latestAnalysisFrameworks: row.latest_analysis_frameworks
+      ? JSON.parse(row.latest_analysis_frameworks)
+      : [],
+    latestAnalysisDatabase: row.latest_analysis_database,
   };
 }
 
@@ -26,6 +48,29 @@ export function getAllProjects(): Project[] {
     'SELECT * FROM projects ORDER BY updated_at DESC'
   ).all() as ProjectRow[];
   return rows.map(rowToProject);
+}
+
+export function getAllProjectsWithAnalysisStatus(): Project[] {
+  const rows = db.prepare(`
+    SELECT
+      p.*,
+      COUNT(a.id) AS analysis_count,
+      latest.created_at AS latest_analysis_at,
+      latest.language AS latest_analysis_language,
+      latest.frameworks AS latest_analysis_frameworks,
+      latest.database_used AS latest_analysis_database
+    FROM projects p
+    LEFT JOIN analyses a ON a.project_id = p.id
+    LEFT JOIN analyses latest ON latest.id = (
+      SELECT id FROM analyses
+      WHERE project_id = p.id
+      ORDER BY created_at DESC
+      LIMIT 1
+    )
+    GROUP BY p.id
+    ORDER BY p.updated_at DESC
+  `).all() as ProjectWithAnalysisRow[];
+  return rows.map(rowToProjectWithAnalysis);
 }
 
 export function getProjectById(id: string): Project | undefined {
@@ -41,7 +86,7 @@ export function createProject(input: CreateProjectInput): Project {
   db.prepare(`
     INSERT INTO projects (id, name, description, repo_path, created_at, updated_at)
     VALUES (?, ?, ?, ?, ?, ?)
-  `).run(id, input.name, input.description, input.repoPath, now, now);
+  `).run(id, input.name, input.description, normalizeRepoPath(input.repoPath), now, now);
   return getProjectById(id)!;
 }
 
@@ -57,7 +102,7 @@ export function updateProject(id: string, input: Partial<CreateProjectInput>): P
   `).run(
     input.name ?? project.name,
     input.description ?? project.description,
-    input.repoPath ?? project.repoPath,
+    input.repoPath === undefined ? project.repoPath : normalizeRepoPath(input.repoPath),
     now,
     id
   );

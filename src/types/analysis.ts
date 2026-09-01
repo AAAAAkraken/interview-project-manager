@@ -10,6 +10,18 @@ export interface Analysis {
   createdAt: string;
 }
 
+export interface AnalysisSummary {
+  id: string;
+  projectId: string;
+  language: string;
+  frameworks: string[];
+  databaseUsed: string;
+  createdAt: string;
+  keyFileCount: number;
+  questionCount: number;
+  highlightCount: number;
+}
+
 export interface KeyFile {
   id: string;
   analysisId: string;

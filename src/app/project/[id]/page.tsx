@@ -8,12 +8,14 @@ import { TechStackTab } from '@/components/project/TechStackTab';
 import { FilesTab } from '@/components/project/FilesTab';
 import { InterviewQATab } from '@/components/project/InterviewQATab';
 import { ResumeTab } from '@/components/project/ResumeTab';
+import { AnalysisHistory } from '@/components/project/AnalysisHistory';
+import { EditProjectModal } from '@/components/project/EditProjectModal';
 import { Button } from '@/components/ui/Button';
 import { LoadingSpinner } from '@/components/ui/LoadingSpinner';
 import { ErrorState } from '@/components/ui/ErrorState';
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
 import type { Project } from '@/types/project';
-import type { Analysis, KeyFile, InterviewQuestion, ResumeHighlight } from '@/types/analysis';
+import type { Analysis, AnalysisSummary, KeyFile, InterviewQuestion, ResumeHighlight } from '@/types/analysis';
 
 type Tab = 'overview' | 'techstack' | 'files' | 'interview' | 'resume';
 
@@ -23,6 +25,7 @@ export default function ProjectDetailPage() {
 
   const [project, setProject] = useState<Project | null>(null);
   const [analysis, setAnalysis] = useState<Analysis | null>(null);
+  const [analyses, setAnalyses] = useState<AnalysisSummary[]>([]);
   const [keyFiles, setKeyFiles] = useState<KeyFile[]>([]);
   const [questions, setQuestions] = useState<InterviewQuestion[]>([]);
   const [highlights, setHighlights] = useState<ResumeHighlight[]>([]);
@@ -30,6 +33,26 @@ export default function ProjectDetailPage() {
   const [error, setError] = useState('');
   const [activeTab, setActiveTab] = useState<Tab>('overview');
   const [showDelete, setShowDelete] = useState(false);
+  const [showEdit, setShowEdit] = useState(false);
+  const [deletingAnalysisId, setDeletingAnalysisId] = useState<string | null>(null);
+  const [deleteError, setDeleteError] = useState('');
+
+  const clearAnalysisData = () => {
+    setAnalysis(null);
+    setKeyFiles([]);
+    setQuestions([]);
+    setHighlights([]);
+  };
+
+  const loadAnalysis = async (analysisId: string) => {
+    const analysisRes = await fetch(`/api/analyses/${analysisId}`);
+    if (!analysisRes.ok) throw new Error('加载分析数据失败');
+    const a = await analysisRes.json();
+    setAnalysis(a);
+    setKeyFiles(a.keyFiles || []);
+    setQuestions(a.interviewQuestions || []);
+    setHighlights(a.resumeHighlights || []);
+  };
 
   const loadData = async () => {
     setLoading(true);
@@ -40,19 +63,18 @@ export default function ProjectDetailPage() {
       const p = await res.json();
       setProject(p);
 
-      // Load latest analysis with nested data
-      const analysisRes = await fetch(`/api/analyses/latest?projectId=${id}`);
-      if (analysisRes.ok) {
-        const a = await analysisRes.json();
-        if (a && a.id) {
-          setAnalysis(a);
-          setKeyFiles(a.keyFiles || []);
-          setQuestions(a.interviewQuestions || []);
-          setHighlights(a.resumeHighlights || []);
-        }
+      const listRes = await fetch(`/api/projects/${id}/analyses`);
+      if (!listRes.ok) throw new Error('加载分析历史失败');
+      const list = await listRes.json();
+      setAnalyses(list);
+
+      if (list.length > 0) {
+        await loadAnalysis(list[0].id);
+      } else {
+        clearAnalysisData();
       }
-    } catch {
-      setError('加载失败');
+    } catch (e) {
+      setError(e instanceof Error ? e.message : '加载失败');
     }
     setLoading(false);
   };
@@ -60,8 +82,45 @@ export default function ProjectDetailPage() {
   useEffect(() => { loadData(); }, [id]);
 
   const handleDelete = async () => {
-    await fetch(`/api/projects/${id}`, { method: 'DELETE' });
-    window.location.href = '/';
+    const res = await fetch(`/api/projects/${id}`, { method: 'DELETE' });
+    if (res.ok) {
+      window.location.href = '/';
+      return;
+    }
+    setError('删除项目失败');
+  };
+
+  const handleSelectAnalysis = async (analysisId: string) => {
+    setDeleteError('');
+    try {
+      await loadAnalysis(analysisId);
+    } catch (e) {
+      setDeleteError(e instanceof Error ? e.message : '加载分析数据失败');
+    }
+  };
+
+  const handleDeleteAnalysis = async (analysisId: string) => {
+    setDeleteError('');
+    try {
+      const res = await fetch(`/api/analyses/${analysisId}`, { method: 'DELETE' });
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        throw new Error(data.error || '删除分析记录失败');
+      }
+
+      setDeletingAnalysisId(null);
+      const listRes = await fetch(`/api/projects/${id}/analyses`);
+      if (!listRes.ok) throw new Error('刷新分析历史失败');
+      const list = await listRes.json();
+      setAnalyses(list);
+      if (list.length > 0) {
+        await loadAnalysis(list[0].id);
+      } else {
+        clearAnalysisData();
+      }
+    } catch (e) {
+      setDeleteError(e instanceof Error ? e.message : '删除分析记录失败');
+    }
   };
 
   if (loading) return <LoadingSpinner text="加载项目..." />;
@@ -91,13 +150,17 @@ export default function ProjectDetailPage() {
           </div>
         </div>
         <div className="flex items-center gap-2">
+          <Button variant="secondary" size="sm" onClick={() => setShowEdit(true)}>编辑项目</Button>
           {analysis && (
             <Link href={`/project/${id}/export`}>
               <Button variant="secondary" size="sm">导出</Button>
             </Link>
           )}
+          <Link href={`/project/${id}/auto-analyze`}>
+            <Button variant="primary" size="sm">AI 自动分析</Button>
+          </Link>
           <Link href={`/project/${id}/import`}>
-            <Button variant="primary" size="sm">导入分析</Button>
+            <Button variant="secondary" size="sm">手动导入分析</Button>
           </Link>
           <Button variant="ghost" size="sm" onClick={() => setShowDelete(true)}>
             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -108,6 +171,18 @@ export default function ProjectDetailPage() {
       </div>
 
       {/* Tabs */}
+      <AnalysisHistory
+        projectId={id}
+        analyses={analyses}
+        selectedAnalysisId={analysis?.id || null}
+        deletingAnalysisId={deletingAnalysisId}
+        deleteError={deleteError}
+        onSelect={handleSelectAnalysis}
+        onRequestDelete={setDeletingAnalysisId}
+        onCancelDelete={() => setDeletingAnalysisId(null)}
+        onDelete={handleDeleteAnalysis}
+      />
+
       <TabBar tabs={tabs} activeTab={activeTab} onTabChange={setActiveTab} />
 
       {/* Tab Content */}
@@ -122,7 +197,7 @@ export default function ProjectDetailPage() {
           <FilesTab keyFiles={keyFiles} />
         )}
         {activeTab === 'interview' && (
-          <InterviewQATab questions={questions} />
+          <InterviewQATab projectId={id} questions={questions} />
         )}
         {activeTab === 'resume' && (
           <ResumeTab highlights={highlights} projectId={id} />
@@ -137,6 +212,13 @@ export default function ProjectDetailPage() {
         message={`确定要删除「${project.name}」吗？相关的所有分析数据也会被删除。`}
         confirmLabel="删除"
         variant="danger"
+      />
+
+      <EditProjectModal
+        isOpen={showEdit}
+        project={project}
+        onClose={() => setShowEdit(false)}
+        onSaved={(updatedProject) => setProject(updatedProject)}
       />
     </div>
   );

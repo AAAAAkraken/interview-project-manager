@@ -1,72 +1,126 @@
-/**
- * Startup orchestrator
- * 1. Starts Next.js dev server
- * 2. Waits for it to be ready (including first page compile)
- * 3. Launches Electron window pointing to the ready server
- */
 const { spawn } = require('child_process');
 const http = require('http');
+const net = require('net');
 const path = require('path');
 
 const PORT = 3000;
 const URL = `http://localhost:${PORT}`;
+const APP_URL = `${URL}/resumes/import`;
 const ROOT = path.join(__dirname, '..');
 
-console.log('=== 牛马速通器 桌面版 ===\n');
-console.log('正在启动 Next.js 服务...');
+let nextProcess = null;
+let electronProcess = null;
 
-// Step 1: Start Next.js
-const nextProcess = spawn('npx', ['next', 'dev', '-p', String(PORT)], {
-  cwd: ROOT,
-  shell: true,
-  stdio: 'inherit',
-});
+function requestUrl(targetUrl, timeout = 1000) {
+  return new Promise((resolve) => {
+    const req = http.get(targetUrl, (res) => {
+      res.resume();
+      resolve(res.statusCode >= 200 && res.statusCode < 500);
+    });
 
-// Step 2: Wait for server to respond with 200
-function waitForServer(callback) {
+    req.on('error', () => resolve(false));
+    req.setTimeout(timeout, () => {
+      req.destroy();
+      resolve(false);
+    });
+  });
+}
+
+function isPortOpen(port, host = '127.0.0.1', timeout = 500) {
+  return new Promise((resolve) => {
+    const socket = net.createConnection({ port, host }, () => {
+      socket.end();
+      resolve(true);
+    });
+
+    socket.setTimeout(timeout);
+    socket.on('timeout', () => {
+      socket.destroy();
+      resolve(false);
+    });
+    socket.on('error', () => resolve(false));
+  });
+}
+
+function startNextServer() {
+  console.log('Starting Next.js server...');
+  nextProcess = spawn('npx', ['next', 'dev', '-p', String(PORT)], {
+    cwd: ROOT,
+    shell: true,
+    stdio: 'inherit',
+  });
+}
+
+function waitForServer() {
   const startTime = Date.now();
   const maxWait = 120000;
 
-  function poll() {
-    if (Date.now() - startTime > maxWait) {
-      console.error('\n❌ 超时：Next.js 服务未能在 120 秒内启动');
-      nextProcess.kill();
-      process.exit(1);
+  return new Promise((resolve, reject) => {
+    function poll() {
+      if (Date.now() - startTime > maxWait) {
+        reject(new Error('Next.js server did not start within 120 seconds'));
+        return;
+      }
+
+      requestUrl(URL).then((ready) => {
+        if (ready) {
+          resolve();
+          return;
+        }
+        setTimeout(poll, 1000);
+      });
     }
 
-    http.get(URL, (res) => {
-      if (res.statusCode === 200) {
-        console.log('✅ Next.js 就绪\n');
-        callback();
-      } else {
-        setTimeout(poll, 1000);
-      }
-    }).on('error', () => {
-      setTimeout(poll, 1000);
-    });
-  }
-
-  // Give Next.js a few seconds before first check
-  setTimeout(poll, 3000);
+    setTimeout(poll, 1000);
+  });
 }
 
-// Step 3: Once server is ready, also pre-warm the first page, then launch Electron
-waitForServer(() => {
-  // Make a request to trigger first-page compilation
-  http.get(URL, () => {
-    // Now actually launch Electron
-    spawn('npx', ['electron', '.'], {
-      cwd: ROOT,
-      stdio: 'inherit',
-      shell: true,
-      env: { ...process.env, NEXT_EXTERNAL: 'true' },
-    }).on('exit', (code) => {
-      nextProcess.kill();
-      process.exit(code || 0);
-    });
+function launchElectron() {
+  electronProcess = spawn('npx', ['electron', '.'], {
+    cwd: ROOT,
+    stdio: 'inherit',
+    shell: true,
+    env: { ...process.env, NEXT_EXTERNAL: 'true' },
   });
+
+  electronProcess.on('exit', (code) => {
+    if (nextProcess) nextProcess.kill();
+    process.exit(code || 0);
+  });
+}
+
+function cleanup() {
+  if (electronProcess) electronProcess.kill();
+  if (nextProcess) nextProcess.kill();
+}
+
+async function boot() {
+  console.log('=== Niuma Quick Pass desktop app ===\n');
+
+  const alreadyRunning = await isPortOpen(PORT) || await requestUrl(URL);
+  if (alreadyRunning) {
+    console.log(`Port ${PORT} already has a server. Reusing it.`);
+  } else {
+    startNextServer();
+  }
+
+  await waitForServer();
+  await requestUrl(APP_URL, 3000);
+  launchElectron();
+}
+
+boot().catch((error) => {
+  console.error(error);
+  cleanup();
+  process.exit(1);
 });
 
-// Cleanup
-process.on('SIGINT', () => { nextProcess.kill(); process.exit(0); });
-process.on('SIGTERM', () => { nextProcess.kill(); process.exit(0); });
+process.on('SIGINT', () => {
+  cleanup();
+  process.exit(0);
+});
+
+process.on('SIGTERM', () => {
+  cleanup();
+  process.exit(0);
+});

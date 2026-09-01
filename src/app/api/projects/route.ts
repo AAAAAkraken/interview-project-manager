@@ -1,9 +1,10 @@
 import { NextResponse } from 'next/server';
 import * as projectRepo from '@/lib/repositories/projectRepository';
+import { normalizeRepoPath } from '@/lib/projects/repoPath';
 
 export async function GET() {
   try {
-    const projects = projectRepo.getAllProjects();
+    const projects = projectRepo.getAllProjectsWithAnalysisStatus();
     return NextResponse.json(projects);
   } catch (error) {
     return NextResponse.json(
@@ -25,7 +26,7 @@ export async function POST(request: Request) {
     const project = projectRepo.createProject({
       name: body.name.trim(),
       description: body.description?.trim() || '',
-      repoPath: body.repoPath?.trim() || '',
+      repoPath: normalizeRepoPath(body.repoPath),
     });
     return NextResponse.json(project, { status: 201 });
   } catch (error) {

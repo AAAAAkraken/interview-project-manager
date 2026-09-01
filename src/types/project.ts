@@ -5,6 +5,11 @@ export interface Project {
   repoPath: string;
   createdAt: string;
   updatedAt: string;
+  analysisCount?: number;
+  latestAnalysisAt?: string | null;
+  latestAnalysisLanguage?: string | null;
+  latestAnalysisFrameworks?: string[];
+  latestAnalysisDatabase?: string | null;
 }
 
 export interface CreateProjectInput {

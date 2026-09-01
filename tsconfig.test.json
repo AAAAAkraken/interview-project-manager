@@ -1,0 +1,38 @@
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "allowJs": false,
+    "declaration": false,
+    "incremental": false,
+    "isolatedModules": false,
+    "module": "NodeNext",
+    "moduleResolution": "NodeNext",
+    "noEmit": false,
+    "outDir": ".test-dist",
+    "rootDir": "src",
+    "target": "ES2022"
+  },
+  "include": [
+    "src/lib/db.ts",
+    "src/lib/parser/aiResponseParser.ts",
+    "src/lib/layout/printRoute.ts",
+    "src/lib/projects/repoPath.ts",
+    "src/lib/analysis/analysisJobs.ts",
+    "src/lib/analysis/autoPrompt.ts",
+    "src/lib/export/formatExport.ts",
+    "src/lib/analysis/sourceScanner.ts",
+    "src/lib/llm/openAICompatibleProvider.ts",
+    "src/lib/resume/pageLayout.ts",
+    "src/lib/resume/templateLayout.ts",
+    "src/lib/resume/docxParser.ts",
+    "src/lib/resume/importSections.ts",
+    "src/lib/resume/photo.ts",
+    "src/lib/resume/personalInfo.ts",
+    "src/lib/project/interviewQuestionRanking.ts",
+    "src/lib/resume/projectExperienceApply.ts",
+    "src/lib/resume/projectExperienceMerge.ts",
+    "src/lib/resume/projectPrompt.ts",
+    "src/lib/resume/templates.ts",
+    "src/types/**/*.ts"
+  ]
+}

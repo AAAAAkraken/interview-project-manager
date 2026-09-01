@@ -70,10 +70,61 @@ db.exec(`
     FOREIGN KEY (analysis_id) REFERENCES analyses(id) ON DELETE CASCADE
   );
 
+  CREATE TABLE IF NOT EXISTS ai_settings (
+    id TEXT PRIMARY KEY,
+    provider TEXT NOT NULL DEFAULT 'openai-compatible',
+    base_url TEXT NOT NULL DEFAULT '',
+    api_key TEXT NOT NULL DEFAULT '',
+    model TEXT NOT NULL DEFAULT '',
+    updated_at TEXT NOT NULL DEFAULT (datetime('now', 'localtime'))
+  );
+
+  CREATE TABLE IF NOT EXISTS resumes (
+    id TEXT PRIMARY KEY,
+    name TEXT NOT NULL,
+    target_role TEXT NOT NULL DEFAULT '',
+    source_file_name TEXT NOT NULL DEFAULT '',
+    template_id TEXT NOT NULL DEFAULT 'classic',
+    page_count INTEGER NOT NULL DEFAULT 1,
+    photo_data_url TEXT NOT NULL DEFAULT '',
+    sections TEXT NOT NULL DEFAULT '[]',
+    created_at TEXT NOT NULL DEFAULT (datetime('now', 'localtime')),
+    updated_at TEXT NOT NULL DEFAULT (datetime('now', 'localtime'))
+  );
+
+  CREATE TABLE IF NOT EXISTS analysis_jobs (
+    project_id TEXT PRIMARY KEY,
+    status TEXT NOT NULL DEFAULT 'idle',
+    started_at TEXT NOT NULL DEFAULT '',
+    updated_at TEXT NOT NULL DEFAULT '',
+    analysis_id TEXT NOT NULL DEFAULT '',
+    scanned_files INTEGER NOT NULL DEFAULT 0,
+    error TEXT NOT NULL DEFAULT '',
+    details TEXT NOT NULL DEFAULT ''
+  );
+
   CREATE INDEX IF NOT EXISTS idx_analyses_project_id ON analyses(project_id);
   CREATE INDEX IF NOT EXISTS idx_key_files_analysis_id ON key_files(analysis_id);
   CREATE INDEX IF NOT EXISTS idx_interview_questions_analysis_id ON interview_questions(analysis_id);
   CREATE INDEX IF NOT EXISTS idx_resume_highlights_analysis_id ON resume_highlights(analysis_id);
 `);
+
+try {
+  db.prepare("ALTER TABLE resumes ADD COLUMN template_id TEXT NOT NULL DEFAULT 'classic'").run();
+} catch {
+  // Existing databases already have the column.
+}
+
+try {
+  db.prepare("ALTER TABLE resumes ADD COLUMN photo_data_url TEXT NOT NULL DEFAULT ''").run();
+} catch {
+  // Existing databases already have the column.
+}
+
+try {
+  db.prepare("ALTER TABLE resumes ADD COLUMN page_count INTEGER NOT NULL DEFAULT 1").run();
+} catch {
+  // Existing databases already have the column.
+}
 
 export default db;

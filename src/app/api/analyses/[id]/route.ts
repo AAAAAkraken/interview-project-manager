@@ -26,3 +26,19 @@ export async function GET(
     return NextResponse.json({ error: '获取分析数据失败' }, { status: 500 });
   }
 }
+
+export async function DELETE(
+  _request: Request,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  try {
+    const { id } = await params;
+    const deleted = analysisRepo.deleteAnalysis(id);
+    if (!deleted) {
+      return NextResponse.json({ error: '分析记录未找到' }, { status: 404 });
+    }
+    return NextResponse.json({ success: true });
+  } catch (error) {
+    return NextResponse.json({ error: '删除分析记录失败' }, { status: 500 });
+  }
+}

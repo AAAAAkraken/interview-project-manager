@@ -9,6 +9,7 @@
     "dev": "next dev",
     "electron:dev": "node electron/start.js",
     "build": "next build",
+    "test": "tsc -p tsconfig.test.json && node --test test/*.test.mjs",
     "start": "next start",
     "electron:start": "next build && node electron/start.js",
     "lint": "next lint",
@@ -36,7 +37,9 @@
       {
         "from": "node_modules",
         "to": "node_modules",
-        "filter": ["**/*"]
+        "filter": [
+          "**/*"
+        ]
       },
       {
         "from": "next.config.js",
@@ -58,6 +61,8 @@
   },
   "dependencies": {
     "better-sqlite3": "^12.11.1",
+    "docx": "^9.7.1",
+    "mammoth": "^1.12.1",
     "next": "15.2.3",
     "react": "^19.0.0",
     "react-dom": "^19.0.0"

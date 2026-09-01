@@ -1,22 +1,15 @@
 'use client';
-import { useState, useEffect, useCallback } from 'react';
+
+import { useState } from 'react';
 import Link from 'next/link';
 import { Card } from '@/components/ui/Card';
 import { Badge } from '@/components/ui/Badge';
 import { Button } from '@/components/ui/Button';
 import type { Project } from '@/types/project';
-import type { Analysis } from '@/types/analysis';
 
 export function ProjectCard({ project, onDelete }: { project: Project; onDelete: (id: string) => void }) {
-  const [latestAnalysis, setLatestAnalysis] = useState<Analysis | null>(null);
   const [showConfirm, setShowConfirm] = useState(false);
-
-  useEffect(() => {
-    fetch(`/api/analyses/latest?projectId=${project.id}`)
-      .then(res => res.ok ? res.json() : null)
-      .then(data => { if (data && data.id) setLatestAnalysis(data); })
-      .catch(() => {});
-  }, [project.id]);
+  const hasAnalysis = Boolean(project.analysisCount && project.analysisCount > 0);
 
   return (
     <Card hover className="p-5">
@@ -42,33 +35,38 @@ export function ProjectCard({ project, onDelete }: { project: Project; onDelete:
         </button>
       </div>
 
-      {latestAnalysis && (
+      {hasAnalysis ? (
         <div className="flex flex-wrap gap-1.5 mb-3">
-          <Badge color="blue">{latestAnalysis.language}</Badge>
-          {latestAnalysis.frameworks.slice(0, 3).map(fw => (
+          {project.latestAnalysisLanguage && <Badge color="blue">{project.latestAnalysisLanguage}</Badge>}
+          {(project.latestAnalysisFrameworks || []).slice(0, 3).map(fw => (
             <Badge key={fw} color="purple">{fw}</Badge>
           ))}
-          {latestAnalysis.databaseUsed && latestAnalysis.databaseUsed !== '无' && (
-            <Badge color="green">{latestAnalysis.databaseUsed}</Badge>
+          {project.latestAnalysisDatabase && project.latestAnalysisDatabase !== '无' && (
+            <Badge color="green">{project.latestAnalysisDatabase}</Badge>
           )}
+        </div>
+      ) : (
+        <div className="mb-3">
+          <Badge color="gray">未分析</Badge>
         </div>
       )}
 
       <div className="flex items-center justify-between">
         <span className="text-xs text-gray-400">
-          {latestAnalysis ? `最近分析：${new Date(latestAnalysis.createdAt).toLocaleDateString('zh-CN')}` : '尚未导入分析'}
+          {hasAnalysis && project.latestAnalysisAt
+            ? `最近分析：${new Date(project.latestAnalysisAt).toLocaleDateString('zh-CN')}`
+            : '尚未导入分析'}
         </span>
         <Link href={`/project/${project.id}`} className="text-sm text-blue-600 hover:text-blue-700 font-medium no-underline">
-          查看 →
+          查看
         </Link>
       </div>
 
-      {/* Delete confirm */}
       {showConfirm && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50" onClick={() => setShowConfirm(false)}>
           <div className="bg-white rounded-xl shadow-xl max-w-sm w-full mx-4 p-6" onClick={e => e.stopPropagation()}>
             <h3 className="text-lg font-semibold text-gray-900 mb-2">确认删除</h3>
-            <p className="text-sm text-gray-600 mb-6">确定要删除「{project.name}」吗？相关的所有分析数据也会被删除。此操作不可撤销。</p>
+            <p className="text-sm text-gray-600 mb-6">确定要删除“{project.name}”吗？相关分析数据也会一起删除，此操作不可撤销。</p>
             <div className="flex justify-end gap-3">
               <Button variant="secondary" onClick={() => setShowConfirm(false)}>取消</Button>
               <Button variant="danger" onClick={() => onDelete(project.id)}>删除</Button>

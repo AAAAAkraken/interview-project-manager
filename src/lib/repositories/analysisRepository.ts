@@ -1,5 +1,5 @@
 import db from '@/lib/db';
-import type { Analysis, KeyFile, InterviewQuestion, ResumeHighlight, CreateAnalysisInput } from '@/types/analysis';
+import type { Analysis, AnalysisSummary, KeyFile, InterviewQuestion, ResumeHighlight, CreateAnalysisInput } from '@/types/analysis';
 
 interface AnalysisRow {
   id: string;
@@ -11,6 +11,18 @@ interface AnalysisRow {
   directory_structure: string;
   raw_ai_response: string;
   created_at: string;
+}
+
+interface AnalysisSummaryRow {
+  id: string;
+  project_id: string;
+  language: string;
+  frameworks: string;
+  database_used: string;
+  created_at: string;
+  key_file_count: number;
+  question_count: number;
+  highlight_count: number;
 }
 
 function rowToAnalysis(row: AnalysisRow): Analysis {
@@ -27,11 +39,48 @@ function rowToAnalysis(row: AnalysisRow): Analysis {
   };
 }
 
+function rowToAnalysisSummary(row: AnalysisSummaryRow): AnalysisSummary {
+  return {
+    id: row.id,
+    projectId: row.project_id,
+    language: row.language,
+    frameworks: JSON.parse(row.frameworks),
+    databaseUsed: row.database_used,
+    createdAt: row.created_at,
+    keyFileCount: row.key_file_count,
+    questionCount: row.question_count,
+    highlightCount: row.highlight_count,
+  };
+}
+
 export function getAnalysesByProjectId(projectId: string): Analysis[] {
   const rows = db.prepare(
     'SELECT * FROM analyses WHERE project_id = ? ORDER BY created_at DESC'
   ).all(projectId) as AnalysisRow[];
   return rows.map(rowToAnalysis);
+}
+
+export function getAnalysisSummariesByProjectId(projectId: string): AnalysisSummary[] {
+  const rows = db.prepare(`
+    SELECT
+      a.id,
+      a.project_id,
+      a.language,
+      a.frameworks,
+      a.database_used,
+      a.created_at,
+      COUNT(DISTINCT k.id) AS key_file_count,
+      COUNT(DISTINCT q.id) AS question_count,
+      COUNT(DISTINCT h.id) AS highlight_count
+    FROM analyses a
+    LEFT JOIN key_files k ON k.analysis_id = a.id
+    LEFT JOIN interview_questions q ON q.analysis_id = a.id
+    LEFT JOIN resume_highlights h ON h.analysis_id = a.id
+    WHERE a.project_id = ?
+    GROUP BY a.id
+    ORDER BY a.created_at DESC
+  `).all(projectId) as AnalysisSummaryRow[];
+  return rows.map(rowToAnalysisSummary);
 }
 
 export function getAnalysisById(id: string): Analysis | undefined {
