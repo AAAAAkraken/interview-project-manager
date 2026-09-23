@@ -3,8 +3,8 @@ import './globals.css';
 import AppShell from '@/components/layout/AppShell';
 
 export const metadata: Metadata = {
-  title: '牛马速通器',
-  description: '牛马速通器 — 面试准备利器',
+  title: '面试项目管理系统',
+  description: '面试项目管理系统 — 面试准备利器',
 };
 
 export default function RootLayout({

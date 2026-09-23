@@ -137,7 +137,7 @@ function createWindow() {
     height: 800,
     minWidth: 900,
     minHeight: 600,
-    title: '牛马速通器',
+    title: '面试项目管理系统',
     backgroundColor: '#f3f4f6',
     icon: path.join(__dirname, '..', 'assets', 'icon.ico'),
     webPreferences: {

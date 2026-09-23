@@ -1,7 +1,7 @@
 {
   "name": "interview-project-manager",
   "version": "1.0.0",
-  "description": "牛马速通器 - Electron桌面应用",
+  "description": "面试项目管理系统 - Electron桌面应用",
   "author": "AAAAAkraken",
   "private": true,
   "main": "electron/main.js",
@@ -20,7 +20,7 @@
   },
   "build": {
     "appId": "com.interview.manager",
-    "productName": "牛马速通器",
+    "productName": "面试项目管理系统",
     "directories": {
       "output": "release"
     },
@@ -55,7 +55,7 @@
       "oneClick": false,
       "allowToChangeInstallationDirectory": true,
       "createDesktopShortcut": true,
-      "shortcutName": "牛马速通器"
+      "shortcutName": "面试项目管理系统"
     },
     "npmRebuild": true
   },

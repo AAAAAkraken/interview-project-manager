@@ -95,7 +95,7 @@ function cleanup() {
 }
 
 async function boot() {
-  console.log('=== Niuma Quick Pass desktop app ===\n');
+  console.log('=== Interview Project Management System desktop app ===\n');
 
   const alreadyRunning = await isPortOpen(PORT) || await requestUrl(URL);
   if (alreadyRunning) {
